@@ -67,7 +67,7 @@ public class TLSTester {
             System.out.print("Check connectivity to " + host + ":" + port + " - ");
             SSLSocket sslSocket = (SSLSocket)sslSF.createSocket(host, port);
             System.out.println("OK.");
-            ciphers = getPrefixCipherSuites(sslSocket);
+            ciphers = getSupportedCipherSuitesAndSetPrefix(sslSocket);
             sslSocket.close();
 
         } catch(Exception e) {
@@ -92,17 +92,23 @@ public class TLSTester {
         X509TrustManager tm = (X509TrustManager) tmf.getTrustManagers()[0];
         X509Certificate[] trustedCerts = tm.getAcceptedIssuers();
         List<X509Certificate> trustedCertificates = Arrays.asList(trustedCerts);
+        int size = certs.size();
+        checkRootCert(trustedCertificates,certificates,size);
+        Collections.reverse(certs);
+        certs.forEach(cert -> getCertificatesInfos(cert, certs.indexOf(cert)+1));
+        sslSocket.close();
+        System.out.println(cipherSuitesSupport);
+        printSupportedCipherSuites(getSupportedCipherSuits(sslSF, ciphers));
 
+    }
 
+    private void checkRootCert(List<X509Certificate> trustedCertificates, X509Certificate[] certificates, int size) {
         X509Certificate root = null;
         for (X509Certificate cert : trustedCertificates) {
             if (cert.getSubjectDN().equals(certificates[certificates.length - 1].getIssuerDN())) {
                 root = cert;
             }
         }
-
-        int size = certs.size();
-
         if (root != null) {
             size++;
             System.out.println("The root CA is trusted");
@@ -115,13 +121,6 @@ public class TLSTester {
         if (root != null) {
             getCertificatesInfos(root, 0);
         }
-
-        Collections.reverse(certs);
-        certs.forEach(cert -> getCertificatesInfos(cert, certs.indexOf(cert)+1));
-        sslSocket.close();
-        System.out.println(cipherSuitesSupport);
-        printSupportedCipherSuites(getSupportedCipherSuits(sslSF, ciphers));
-
     }
 
     private void printSupportedCipherSuites(HashMap<String, ArrayList<CipherSuit>> ciphersProtocolsMap) {
@@ -164,7 +163,7 @@ public class TLSTester {
         System.out.println();
     }
 
-    private List<String> getPrefixCipherSuites(SSLSocket sslSocket) {
+    private List<String> getSupportedCipherSuitesAndSetPrefix(SSLSocket sslSocket) {
         String[] cipherSuites = sslSocket.getSupportedCipherSuites();
         cipherSuitesSupport = cipherSuitesSupport.concat("\nCheck supported cipher suites (test program supports " + cipherSuites.length +
                 " cipher suites) \nDONE... \n"
