@@ -9,7 +9,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
-//import org.apache.commons.lang3.StringUtils;
 
 /**
  * This class serves to test SSL/TLS servers.
@@ -35,7 +34,7 @@ public class TLSTester {
      *
      * @throws Exception An exception occurred
      */
-    private void run() throws Exception {
+    public void run() throws Exception {
         // To be implemented
 
         SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
@@ -48,7 +47,7 @@ public class TLSTester {
             sslContext.init(null, tmf.getTrustManagers(), null);
         } else {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(new FileInputStream("/Users/bdubel/Documents/ZHAW/HS_2020/SWS/SWS1_Labs_2020/"+ trustStore), password.toCharArray());
+            keyStore.load(new FileInputStream("/Users/bdubel/Documents/ZHAW/HS_2020/SWS/SWS1_Labs_2020/Lab_04/src/main/resources/"+ trustStore), password.toCharArray());
 
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX");
             kmf.init(keyStore, password.toCharArray());
@@ -87,8 +86,37 @@ public class TLSTester {
         SSLSession session = sslSocket.getSession();
         X509Certificate[] certificates = (X509Certificate[])session.getPeerCertificates();
 
-        System.out.println(certificates.length + " certificate(s) in chain");
+
         List<X509Certificate> certs = Arrays.asList(certificates);
+
+        X509TrustManager tm = (X509TrustManager) tmf.getTrustManagers()[0];
+        X509Certificate[] trustedCerts = tm.getAcceptedIssuers();
+        List<X509Certificate> trustedCertificates = Arrays.asList(trustedCerts);
+
+
+        X509Certificate root = null;
+        for (X509Certificate cert : trustedCertificates) {
+            if (cert.getSubjectDN().equals(certificates[certificates.length - 1].getIssuerDN())) {
+                root = cert;
+            }
+        }
+
+        int size = certs.size();
+
+        if (root != null) {
+            size++;
+            System.out.println("The root CA is trusted");
+            System.out.println();
+        } else {
+            System.out.println("The root CA is not trusted, ignore root CA checks in this test");
+        }
+
+        System.out.println(size + " certificate(s) in chain");
+        if (root != null) {
+            getCertificatesInfos(root, 0);
+        }
+
+        Collections.reverse(certs);
         certs.forEach(cert -> getCertificatesInfos(cert, certs.indexOf(cert)+1));
         sslSocket.close();
         System.out.println(cipherSuitesSupport);
@@ -138,7 +166,7 @@ public class TLSTester {
 
     private List<String> getPrefixCipherSuites(SSLSocket sslSocket) {
         String[] cipherSuites = sslSocket.getSupportedCipherSuites();
-        cipherSuitesSupport = cipherSuitesSupport.concat("Check supported cipher suites (test program supports " + cipherSuites.length +
+        cipherSuitesSupport = cipherSuitesSupport.concat("\nCheck supported cipher suites (test program supports " + cipherSuites.length +
                 " cipher suites) \nDONE... \n"
                 + cipherSuites.length +" cipher suites using 3 SSL/TLS protocol versions tested\n");
         return Arrays.asList(cipherSuites);
@@ -168,6 +196,16 @@ public class TLSTester {
 
     private boolean isCipherSuitSecure(String cipherSuite) {
 //        return StringUtils.indexOfAny(cipherSuite, new String[]{"RC4", "DES", "3DES", "MD5", "SHA"}) == -1;
+//        boolean isKeyLengthSecure = true;
+//        if (cipherSuite.contains("_WITH_")) {
+//            String[] split = cipherSuite.split("_WITH_");
+//            cipherSuite = split[0];
+//        }
+//        String[] split = cipherSuite.split("_");
+//        List<String> numbers= Arrays.stream(split).filter(word -> word.matches("\\d+(\\.\\d+)?")).collect(Collectors.toList());
+//        if(numbers.size() > 0) {
+//            isKeyLengthSecure = Integer.parseInt(numbers.get(0)) >= 128;
+//        }
         return !(cipherSuite.contains("RC4") || cipherSuite.contains("DES") || cipherSuite.contains("3DES"));
     }
 
@@ -197,8 +235,6 @@ public class TLSTester {
         } else {
             System.out.println("RSA public key length: " + ((RSAPublicKey)cert.getPublicKey()).getModulus().bitLength());
         }
-
-        System.out.println();
     }
 
     /**
