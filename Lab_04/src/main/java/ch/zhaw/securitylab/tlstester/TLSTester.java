@@ -9,6 +9,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class serves to test SSL/TLS servers.
@@ -47,6 +48,7 @@ public class TLSTester {
             sslContext.init(null, tmf.getTrustManagers(), null);
         } else {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
+
             keyStore.load(new FileInputStream("/Users/bdubel/Documents/ZHAW/HS_2020/SWS/SWS1_Labs_2020/Lab_04/src/main/resources/"+ trustStore), password.toCharArray());
 
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX");
@@ -63,7 +65,6 @@ public class TLSTester {
         List<String> ciphers;
 
         try{
-            new SSLParameters(new String[]{"cipherSuites"}, new String[]{"protocols"});
             System.out.print("Check connectivity to " + host + ":" + port + " - ");
             SSLSocket sslSocket = (SSLSocket)sslSF.createSocket(host, port);
             System.out.println("OK.");
@@ -77,8 +78,7 @@ public class TLSTester {
 
         System.out.println();
 
-        String[] protocolsString = new String[] {"SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
-        List<String> protocols = Arrays.asList(protocolsString);
+        List<String> protocols = Arrays.asList("SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3");
         protocols.forEach(protocol -> getSupportedProtocols(protocol,sslSF));
         System.out.println();
 
@@ -103,12 +103,11 @@ public class TLSTester {
     }
 
     private void checkRootCert(List<X509Certificate> trustedCertificates, X509Certificate[] certificates, int size) {
-        X509Certificate root = null;
-        for (X509Certificate cert : trustedCertificates) {
-            if (cert.getSubjectDN().equals(certificates[certificates.length - 1].getIssuerDN())) {
-                root = cert;
-            }
-        }
+        X509Certificate root = trustedCertificates.stream()
+                .filter(cert -> cert.getSubjectDN().equals(certificates[certificates.length - 1]
+                .getIssuerDN()))
+                .findAny().orElseGet(null);
+
         if (root != null) {
             size++;
             System.out.println("The root CA is trusted");
@@ -194,18 +193,19 @@ public class TLSTester {
     }
 
     private boolean isCipherSuitSecure(String cipherSuite) {
-//        return StringUtils.indexOfAny(cipherSuite, new String[]{"RC4", "DES", "3DES", "MD5", "SHA"}) == -1;
-//        boolean isKeyLengthSecure = true;
-//        if (cipherSuite.contains("_WITH_")) {
-//            String[] split = cipherSuite.split("_WITH_");
-//            cipherSuite = split[0];
-//        }
-//        String[] split = cipherSuite.split("_");
-//        List<String> numbers= Arrays.stream(split).filter(word -> word.matches("\\d+(\\.\\d+)?")).collect(Collectors.toList());
-//        if(numbers.size() > 0) {
-//            isKeyLengthSecure = Integer.parseInt(numbers.get(0)) >= 128;
-//        }
-        return !(cipherSuite.contains("RC4") || cipherSuite.contains("DES") || cipherSuite.contains("3DES"));
+//        return StringUtils.indexOfAny(cipherSuite, new String[]{"RC4", "DES", "3DES", "MD5"}) == -1;
+        boolean isKeyLengthSecure = true;
+        boolean isMacSecure = true;
+        boolean isCipherSecure = !(cipherSuite.contains("RC4") || cipherSuite.contains("DES") || cipherSuite.contains("3DES"));
+        String[] split = cipherSuite.split("_");
+        if(split.length > 0) {
+            List<String> numbers= Arrays.stream(split).filter(word -> word.matches("\\d+(\\.\\d+)?")).collect(Collectors.toList());
+            if (numbers.size() > 0) {
+                isKeyLengthSecure = Integer.parseInt(numbers.get(0)) >= 128;
+            }
+            isMacSecure = !split[split.length -1].contains("MD5");
+        }
+        return isCipherSecure && isKeyLengthSecure && isMacSecure;
     }
 
     private void getSupportedProtocols(String protocol, SSLSocketFactory sslSF) {
