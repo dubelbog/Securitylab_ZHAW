@@ -1,1 +1,0 @@
-The ultimate test document for the Java cryptography security lab!!!
