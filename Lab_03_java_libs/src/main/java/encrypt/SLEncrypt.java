@@ -22,41 +22,30 @@ public class SLEncrypt {
         String encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_CBC_PKCS5Padding_128_HmacSHA256.txt";
         int keyLength = 128;
         String macAlgorithm = "HmacSHA256";
-
-        // compute AES/CBC/PKCS5Padding with 128 bits length and mac algorithm HmacSHA1
         new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength,macAlgorithm,password);
 
         cipherAlgorithm = "AES/GCM/NoPadding";
         encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_GCM_NoPadding_192.txt";
         keyLength = 192;
-
-
-        // compute AES/CBC/PKCS5Padding with 128 bits length and mac algorithm HmacSHA1
         new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength,"",password);
 
         cipherAlgorithm = "AES/CTR/NoPadding";
         encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_CTR_PKCS5Padding_256_HmacSHA1.txt";
         keyLength = 256;
         macAlgorithm = "HmacSHA1";
-
-        // compute AES/CBC/PKCS5Padding with 128 bits length and mac algorithm HmacSHA1
         new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength,macAlgorithm,password);
 
         cipherAlgorithm = "CHACHA20";
         encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_CHACHA20_256_HmacSHA3-512.txt";
         keyLength = 256;
         macAlgorithm = "HmacSHA3-512";
+        new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength, macAlgorithm,password);
 
-        // compute AES/CBC/PKCS5Padding with 128 bits length and mac algorithm HmacSHA1
-//        new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength, macAlgorithm,password);
-
-//        cipherAlgorithm = "RC4";
-//        encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_RC4_ 128_HmacSHA3-256.txt";
-//        keyLength = 128;
-//        macAlgorithm = "HmacSHA3-256";
-//
-//        // compute AES/CBC/PKCS5Padding with 128 bits length and mac algorithm HmacSHA1
-//        new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength,macAlgorithm,password);
+        cipherAlgorithm = "RC4";
+        encrypted = "Lab_03_java_libs/src/main/resources/data/decrypted_RC4_128_HmacSHA3-256.txt";
+        keyLength = 128;
+        macAlgorithm = "HmacSHA3-256";
+        new SLEncrypt(plainText, encrypted, cert, cipherAlgorithm, keyLength,macAlgorithm,password);
     }
 
     /**

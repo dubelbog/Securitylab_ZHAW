@@ -17,14 +17,27 @@ public class SLDecrypt {
      * @param args The command line parameters
      */
     public static void main(String[] args) {
-        String fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_CTR_PKCS5Padding_256_HmacSHA1.txt";
+        String fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_CBC_PKCS5Padding_128_HmacSHA256.txt";
         String fileOut = "Lab_03_java_libs/src/main/resources/data/decrypted.txt";
         String keyFile = "Lab_03_java_libs/src/main/resources/data/private_key.pkcs8";
         String macPassword = "supersecret";
-//        if (args.length < 3) {
-//            System.out.println("Not enough arguments\n");
-//            usage();
-//        }
+        System.out.println("-------- -------- -------- -------- -------- -------- -------- -------- --------");
+        new SLDecrypt(fileIn, fileOut, keyFile, macPassword);
+
+        fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_GCM_NoPadding_192.txt";
+        System.out.println("-------- -------- -------- -------- -------- -------- -------- -------- --------");
+        new SLDecrypt(fileIn, fileOut, keyFile, macPassword);
+
+        fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_AES_CTR_PKCS5Padding_256_HmacSHA1.txt";
+        System.out.println("-------- -------- -------- -------- -------- -------- -------- -------- --------");
+        new SLDecrypt(fileIn, fileOut, keyFile, macPassword);
+
+        fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_CHACHA20_256_HmacSHA3-512.txt";
+        System.out.println("-------- -------- -------- -------- -------- -------- -------- -------- --------");
+        new SLDecrypt(fileIn, fileOut, keyFile, macPassword);
+
+        fileIn = "Lab_03_java_libs/src/main/resources/data/decrypted_RC4_128_HmacSHA3-256.txt";
+        System.out.println("-------- -------- -------- -------- -------- -------- -------- -------- --------");
         new SLDecrypt(fileIn, fileOut, keyFile, macPassword);
     }
 

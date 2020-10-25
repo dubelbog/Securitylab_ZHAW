@@ -2,7 +2,6 @@ package encrypt;
 
 import helpers.FileHeader;
 import helpers.Helpers;
-import org.bouncycastle.jcajce.provider.digest.SHA3;
 
 import javax.crypto.*;
 import javax.crypto.spec.ChaCha20ParameterSpec;
@@ -12,7 +11,10 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.*;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -28,7 +30,7 @@ public class HybridEncryptionImpl extends HybridEncryption {
      * Creates a secret key.
      *
      * @param cipherAlgorithm The cipher algorithm to use
-     * @param keyLength The key length in bits
+     * @param keyLength       The key length in bits
      * @return The secret key
      */
     @Override
@@ -50,26 +52,23 @@ public class HybridEncryptionImpl extends HybridEncryption {
 
     private boolean isCipherAlgorithmAndKeyLengthSupported(String cipherAlgorithm, int keyLength) {
         List<String> supportedAlgorithms = Arrays.asList("AES/CBC/PKCS5Padding", "AES/GCM/NoPadding",
-                "AES/CTR/NoPadding", "RC4 ", "CHACHA20");
+                "AES/CTR/NoPadding", "RC4", "CHACHA20");
         boolean isSupportedAlgorithm = supportedAlgorithms.stream().anyMatch(algorithm -> algorithm.equals(cipherAlgorithm));
         boolean isSupportedKeyLength;
-        if(cipherAlgorithm.equals("CHACHA20")) {
-            isSupportedKeyLength = keyLength == 256;
-        } else if (cipherAlgorithm.equals("RC4")) {
+        if (cipherAlgorithm.equals("RC4")) {
             isSupportedKeyLength = keyLength == 128;
         } else {
-            isSupportedKeyLength = keyLength == 128 || keyLength == 192 ||  keyLength == 256;
+            isSupportedKeyLength = keyLength == 128 || keyLength == 192 || keyLength == 256;
         }
-
         return isSupportedAlgorithm && isSupportedKeyLength;
     }
 
     /**
      * Encrypts the secret key with a public key.
      *
-     * @param secretKey The secret key to encrypt
+     * @param secretKey   The secret key to encrypt
      * @param certificate An input stream from which the certificate with the
-     * public key can be read.
+     *                    public key can be read.
      * @return The encrypted secret key
      */
     @Override
@@ -83,9 +82,8 @@ public class HybridEncryptionImpl extends HybridEncryption {
             cipher.init(Cipher.ENCRYPT_MODE, cert);
             encryptedKey = cipher.doFinal(secretKey);
 
-        } catch (CertificateException | NoSuchAlgorithmException |
-                NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException |
-                BadPaddingException e) {
+        } catch (CertificateException | NoSuchAlgorithmException | NoSuchPaddingException |
+                InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
         return encryptedKey;
@@ -95,8 +93,8 @@ public class HybridEncryptionImpl extends HybridEncryption {
      * Creates a file header object and fills it with cipher and mac algorithms
      * names and an IV.
      *
-     * @param cipherAlgorithm The cipher algorithm to use
-     * @param macAlgorithm The MAC algorithm to use
+     * @param cipherAlgorithm    The cipher algorithm to use
+     * @param macAlgorithm       The MAC algorithm to use
      * @param encryptedSecretKey The encrypted secret key
      * @return The new file header object
      */
@@ -110,7 +108,6 @@ public class HybridEncryptionImpl extends HybridEncryption {
         fileHeader.setIV(secureRandom.generateSeed(Helpers.getIVLength(cipherAlgorithm)));
         fileHeader.setMACAlgorithm(macAlgorithm);
         fileHeader.setEncryptedSessionKey(encryptedSecretKey);
-
         return fileHeader;
     }
 
@@ -118,28 +115,27 @@ public class HybridEncryptionImpl extends HybridEncryption {
      * Encrypts a document with a secret key. If GCM is used, the file header is
      * added as additionally encrypted data.
      *
-     * @param document The document to encrypt
+     * @param document   The document to encrypt
      * @param fileHeader The file header that contains information for
-     * encryption
-     * @param secretKey The secret key used for encryption
+     *                   encryption
+     * @param secretKey  The secret key used for encryption
      * @return A byte array that contains the encrypted document
      */
     @Override
     protected byte[] encryptDocument(InputStream document, FileHeader fileHeader, byte[] secretKey) {
 
         byte[] ciphertext = null;
-
         try {
-            if (isCipherAlgorithmAndKeyLengthSupported(fileHeader.getCipherAlgorithm(), fileHeader.getEncryptedSecretKey().length)){
+            if (isCipherAlgorithmAndKeyLengthSupported(fileHeader.getCipherAlgorithm(), fileHeader.getEncryptedSecretKey().length)) {
                 String cipherAlgorithm = fileHeader.getCipherAlgorithm();
                 byte[] iv = fileHeader.getIV();
-                Cipher cipher = Cipher.getInstance(fileHeader.getCipherAlgorithm());
+                Cipher cipher = Cipher.getInstance(cipherAlgorithm);
                 SecretKeySpec keySpec = new SecretKeySpec(secretKey, Helpers.getCipherName(cipherAlgorithm));
 
-                if(Helpers.isGCM(cipherAlgorithm)) {
+                if (Helpers.isGCM(cipherAlgorithm)) {
                     cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(128, iv));
                     cipher.updateAAD(fileHeader.encode());
-                } else if(Helpers.isCHACHA20(cipherAlgorithm)) {
+                } else if (Helpers.isCHACHA20(cipherAlgorithm)) {
                     cipher.init(Cipher.ENCRYPT_MODE, keySpec, new ChaCha20ParameterSpec(iv, 1));
                 } else if (Helpers.hasIV(cipherAlgorithm)) {
                     cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
@@ -169,29 +165,17 @@ public class HybridEncryptionImpl extends HybridEncryption {
      * Computes the HMAC over a byte array.
      *
      * @param dataToProtect The input over which to compute the MAC
-     * @param macAlgorithm The MAC algorithm to use
-     * @param password The password to use for the MAC
+     * @param macAlgorithm  The MAC algorithm to use
+     * @param password      The password to use for the MAC
      * @return The byte array that contains the MAC
      */
     @Override
     protected byte[] computeMAC(byte[] dataToProtect, String macAlgorithm, byte[] password) {
         byte[] hmac = null;
-
         try {
-            if(macAlgorithm.equals("")) {
-                hmac = new byte[0];
-            }
-            else if (macAlgorithm.equals("HmacSHA3-256")) {
-                MessageDigest sha3 = MessageDigest.getInstance("SHA3-256");
-                hmac = sha3.digest(dataToProtect);
-            } else if(macAlgorithm.equals("HmacSHA3-512")) {
-                MessageDigest sha3 = MessageDigest.getInstance("SHA3-512");
-                hmac = sha3.digest(dataToProtect);
-            } else {
-                Mac mac = Mac.getInstance(macAlgorithm);
-                mac.init(new SecretKeySpec(password, macAlgorithm));
-                hmac = mac.doFinal(dataToProtect);
-            }
+            Mac mac = Mac.getInstance(macAlgorithm);
+            mac.init(new SecretKeySpec(password, macAlgorithm));
+            hmac = mac.doFinal(dataToProtect);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             e.printStackTrace();
         }
