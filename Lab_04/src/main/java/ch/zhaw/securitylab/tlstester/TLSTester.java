@@ -103,11 +103,12 @@ public class TLSTester {
     }
 
     private void checkRootCert(List<X509Certificate> trustedCertificates, X509Certificate[] certificates, int size) {
-        X509Certificate root = trustedCertificates.stream()
-                .filter(cert -> cert.getSubjectDN().equals(certificates[certificates.length - 1]
-                .getIssuerDN()))
-                .findAny().orElseGet(null);
-
+        X509Certificate root = null;
+        for (X509Certificate cert : trustedCertificates) {
+            if (cert.getSubjectDN().equals(certificates[certificates.length - 1].getIssuerDN())) {
+                root = cert;
+            }
+        }
         if (root != null) {
             size++;
             System.out.println("The root CA is trusted");
@@ -128,38 +129,37 @@ public class TLSTester {
     }
 
     private void printSupportedSecureCipherSuites(HashMap<String, ArrayList<CipherSuit>> ciphersProtocolsMap) {
-        HashSet<CipherSuit> suitsSecure = new HashSet<>();
+        final int[] size = {0};
         System.out.println("The following SECURE cipher suites are supported by the server:");
         System.out.println();
         ciphersProtocolsMap.forEach((protocol, cipherSuites) -> {
             List<CipherSuit> ciphers = Arrays.asList(cipherSuites.stream().filter(CipherSuit::isSecure).toArray(CipherSuit[]::new));
-            suitsSecure.addAll(ciphers);
-            if (suitsSecure.size() > 0) {
-                System.out.println(protocol + ": " + suitsSecure.size() + " cipher suite(s):");
-            }
-            suitsSecure.forEach(cipherSuit -> System.out.println(cipherSuit.name));
-            System.out.println();
+            size[0] = printCipherSuitesAndReturnSize(ciphers, protocol, true);
         });
-
-        System.out.println("TOTAL UNIQUE SECURE cipher suites: " + suitsSecure.size());
+        System.out.println("TOTAL UNIQUE INSECURE cipher suites: " + size[0]);
         System.out.println();
     }
 
     private void printSupportedInSecureCipherSuites(HashMap<String, ArrayList<CipherSuit>> ciphersProtocolsMap) {
-        HashSet<CipherSuit> suitsInsecure = new HashSet<>();
+        final int[] size = {0};
         System.out.println("The following INSECURE cipher suites are supported by the server:");
         System.out.println();
         ciphersProtocolsMap.forEach((protocol, cipherSuites) -> {
             List<CipherSuit> ciphers = Arrays.asList(cipherSuites.stream().filter(cipherSuit -> !cipherSuit.isSecure()).toArray(CipherSuit[]::new));
-            suitsInsecure.addAll(ciphers);
-            if (suitsInsecure.size() > 0) {
-                System.out.println(protocol + ": " + suitsInsecure.size() + " cipher suite(s):");
-            }
-            suitsInsecure.forEach(cipherSuit -> System.out.println(cipherSuit.name));
-            System.out.println();
+            size[0] = printCipherSuitesAndReturnSize(ciphers, protocol, false);
         });
-        System.out.println("TOTAL UNIQUE INSECURE cipher suites: " + suitsInsecure.size());
+        System.out.println("TOTAL UNIQUE INSECURE cipher suites: " + size[0]);
         System.out.println();
+    }
+
+    private int printCipherSuitesAndReturnSize(List<CipherSuit> ciphers, String protocol, boolean secure) {
+        List<CipherSuit> suitesInsecure = ciphers.stream().distinct().collect(Collectors.toList());
+        if (suitesInsecure.size() > 0) {
+            System.out.println(protocol + ": " + suitesInsecure.size() + " cipher suite(s):");
+            suitesInsecure.forEach(cipherSuit -> System.out.println("\t"+cipherSuit.name));
+            System.out.println();
+        }
+        return suitesInsecure.size();
     }
 
     private List<String> getSupportedCipherSuitesAndSetPrefix(SSLSocket sslSocket) {
